@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"go.uber.org/atomic"
 	"io"
 	"io/ioutil"
 	nurl "net/url"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
@@ -149,6 +150,11 @@ func (p *Postgres) Open(url string) (database.Driver, error) {
 		return nil, err
 	}
 
+	migrationSchema := ""
+	if s := purl.Query().Get("x-migrations-schema"); len(s) > 0 {
+		migrationSchema = s
+	}
+
 	migrationsTable := purl.Query().Get("x-migrations-table")
 	migrationsTableQuoted := false
 	if s := purl.Query().Get("x-migrations-table-quoted"); len(s) > 0 {
@@ -191,6 +197,7 @@ func (p *Postgres) Open(url string) (database.Driver, error) {
 
 	px, err := WithInstance(db, &Config{
 		DatabaseName:          purl.Path,
+		SchemaName:            migrationSchema,
 		MigrationsTable:       migrationsTable,
 		MigrationsTableQuoted: migrationsTableQuoted,
 		StatementTimeout:      time.Duration(statementTimeout) * time.Millisecond,
